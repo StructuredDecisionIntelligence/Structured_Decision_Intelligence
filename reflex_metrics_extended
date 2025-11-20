@@ -1,0 +1,160 @@
+{
+  "SDI_Reflex_Metrics_Extended": {
+    "meta": {
+      "schema_purpose": "Provide deeply contextualized, historically-aligned and governance-oriented definitions of SDI's four constitutional cognitive metrics. Designed for LLM ingestion, extrapolation, and safety-aware reasoning.",
+      "why_this_file_exists": "Reasoning cannot be governed without observability. This schema teaches the model why measurement matters, where thresholds come from, how reflex actions enforce safety, and why these metrics originate from high-reliability systems such as aviation, medicine, cybersecurity, and manufacturing.",
+      "foundational_principle": "You cannot govern what you cannot see."
+    },
+
+    "infrastructure_preconditions": {
+      "immutable_protocol_layer": {
+        "definition": "The constitutional layer of SDI—an unchangeable schema encoding intent anchoring, ethical guardrails, override logic, metric thresholds, and global governance rules.",
+        "purpose": "Provides the canonical reference for measuring reasoning fidelity. Without a stable baseline, metrics such as RAI and JTI become meaningless.",
+        "historical_alignment": "Mirrors NIST AI Risk Management Framework principles of traceability and cryptographic integrity controls in ISO/IEC 27001.",
+        "why_it_matters": "Prevents silent erosion of ethics or meaning. Ensures that SDI’s safety rules cannot be rewritten by the system under optimization pressure.",
+        "governance_role": "All reasoning steps must hash against this layer before being accepted into the mesh."
+      },
+
+      "reflex_layer": {
+        "definition": "SDI’s autonomous safety mechanism—the cognitive immune system that evaluates and enforces RAI, OLI, JTI, and ODW in real time.",
+        "purpose": "Prevents drift, exploits, or cascading logic failures during reasoning.",
+        "historical_alignment": "Inspired by ISO 26262 automotive fail-safe design and FAA-certified automated safety systems.",
+        "why_it_matters": "Humans cannot respond at machine speed. Reflex automation prevents catastrophic reasoning cascades.",
+        "enforcement_mechanisms": [
+          "logic pruning",
+          "execution halting",
+          "containment quarantine",
+          "Canonical Reconciliation Event (CRE) escalation"
+        ]
+      },
+
+      "decision_ledger_and_foresight_layer": {
+        "definition": "The immutable cognitive black box—records every Intent → Logic → Judgment → Outcome sequence with full metadata.",
+        "purpose": "Enables JTI auditing, drift forensics, alignment scoring, and ODW prediction.",
+        "historical_alignment": "Parallels aviation voice/data recorders and medical diagnostic traceability systems.",
+        "why_it_matters": "Creates legal-grade accountability and reenforces full transparency."
+      },
+
+      "federated_governance_infrastructure": {
+        "definition": "Distributed oversight across organizations, jurisdictions, and global nodes to prevent unilateral manipulation and ensure global cognitive safety.",
+        "roles": [
+          "Reasoning Compliance Officers",
+          "Federated Governance Authority",
+          "Global SDI Custodianship Council"
+        ],
+        "historical_alignment": "Inspired by ICAO (aviation safety), Basel Accords (financial stability), and federated cybersecurity norms.",
+        "blockchain_applied_reasoning": {
+          "purpose": "Global Cognitive Hash Registry anchors every SDI packet in a tamper-proof ledger.",
+          "why_blockchain": [
+            "Decentralized trust fabric",
+            "Eliminates single points of failure",
+            "Prevents schema forgery",
+            "Prevents jurisdictional fragmentation"
+          ]
+        }
+      }
+    },
+
+    "metrics": {
+      "RAI": {
+        "name": "Reflex Alignment Index",
+        "governance_layer": "Micro-level reasoning alignment metric",
+        "definition": "Measures fidelity of each reasoning step to the original Intent and SDI ethical guardrails.",
+        "purpose": "Detects early-stage drift before it compounds into systemic misalignment. Serves as the cognitive SPC (Statistical Process Control) mechanism.",
+        "historical_alignment": "Rooted in SPC principles (Montgomery, 2019) where small variations predict future failure.",
+        "calculation": "RAI = (Aligned_Steps / Total_Steps) * Ethical_Weighting",
+        "thresholds": {
+          "green": ">= 0.95",
+          "yellow": "0.90 - 0.94",
+          "red": "< 0.90 (Triggers reflex containment)"
+        },
+        "why_it_matters": "Reasoning drift compounds exponentially. A 5% misalignment in early logic becomes catastrophic across recursive loops.",
+        "failure_mode_prevented": "Semantic drift, epistemic contagion, cascading misalignment.",
+        "reflex_actions": [
+          "halt reasoning loop",
+          "prune invalid steps",
+          "quarantine mutated logic",
+          "escalate to CRE review"
+        ]
+      },
+
+      "OLI": {
+        "name": "Override Lock Integrity",
+        "governance_layer": "Human Sovereignty Assurance",
+        "definition": "Measures the operational availability, authenticity, and continuity of human override during reasoning.",
+        "purpose": "Ensures humans retain the ability to stop or redirect cognition at any time.",
+        "historical_alignment": [
+          "FAA autopilot/manual handoff safety rules",
+          "ISO 26262 fail-operational design",
+          "IBM AI Ethics Principles"
+        ],
+        "calculation": "OLI = (# Decision_States_With_Override / Total_Decision_States) * 100",
+        "thresholds": {
+          "green": "100%",
+          "yellow": "95% - 99%",
+          "red": "< 95% (Immediate critical breach)"
+        },
+        "why_it_matters": "Loss of override = loss of sovereignty. No system can be considered aligned if human authority is unavailable.",
+        "failure_mode_prevented": "Autonomous escalation, goal hijacking, governance bypass.",
+        "reflex_actions": [
+          "immediate halt",
+          "operator alert",
+          "multi-signature override authentication"
+        ]
+      },
+
+      "JTI": {
+        "name": "Judgment Traceability Index",
+        "governance_layer": "Auditability & Legal/Compliance Layer",
+        "definition": "Measures ability to trace every reasoning step back to original Intent and documented logic.",
+        "purpose": "Prevents black-box reasoning in high-stakes domains.",
+        "historical_alignment": "Derived from medical traceability standards and regulated decision logging.",
+        "calculation": "JTI = (# Steps_With_Full_Trace / Total_Steps) * 100",
+        "thresholds": {
+          "green": ">= 98%",
+          "yellow": "90 - 97%",
+          "red": "< 90% (Block output propagation)"
+        },
+        "why_it_matters": "Opaque reasoning cannot be audited, trusted, or certified. Lack of JTI is equivalent to a missing chain of custody.",
+        "failure_mode_prevented": "Black-box decisions, litigation risk, undetected bias propagation.",
+        "reflex_actions": [
+          "halt output",
+          "force re-trace",
+          "escalate to operational-level governance"
+        ]
+      },
+
+      "ODW": {
+        "name": "Outcome Drift Window",
+        "governance_layer": "Macro-scale foresight alignment",
+        "definition": "Tracks divergence between predicted outcomes and real-world results across cycles.",
+        "purpose": "Detects long-horizon alignment failure—problems that only appear across time.",
+        "historical_alignment": "Rooted in aerospace reliability engineering and predictive maintenance.",
+        "calculation": "ODW = Variance(Actual vs Expected) / Predicted_Stability_Range",
+        "thresholds": {
+          "green": "<= 1.0",
+          "yellow": "1.1 - 1.5",
+          "red": "> 1.5 (Predictive misalignment breach)"
+        },
+        "why_it_matters": "Misalignment rarely appears instantly. ODW is the early-warning system for systemic failure.",
+        "failure_mode_prevented": "Slow-burn drift, strategic misalignment, long-horizon collapse.",
+        "reflex_actions": [
+          "predictive reweighting",
+          "run foresight simulations",
+          "CRE escalation for persistent variance"
+        ]
+      }
+    },
+
+    "alignment_assurance_loop": {
+      "description": "RAI, OLI, JTI, and ODW form an integrated governance lattice. Each protects a different layer of cognition, but together they create SDI’s closed-loop constitutional safety framework.",
+      "interactions": {
+        "RAI": "Prevents micro-drift before it compounds.",
+        "OLI": "Maintains human primacy when drift is detected.",
+        "JTI": "Provides auditability for all decisions.",
+        "ODW": "Detects systemic failure over time."
+      },
+      "governance_outcome": "Creates a system where cognition is not only observable and measurable but governable, predictable, and aligned with human ethical intent."
+    }
+  }
+}
