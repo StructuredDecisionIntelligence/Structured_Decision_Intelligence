@@ -1,0 +1,80 @@
+{
+  "SDI_Core_Syntax_Kernel": {
+    "meta": {
+      "definition": "The atomic unit of structured reasoning. A natural-language logic syntax that connects intent, judgment, and outcome into a consistent, machine-readable loop.",
+      "origin_document": "Structured Decision Intelligence: A Syntax for Shared Human-AI Reasoning (White Paper, 2025)",
+      "publication_source": "Medium 
+      "author": "Donald J. Johnson",
+      "copyright": "©2025 Donald J. Johnson"
+    },
+    "system_role": {
+      "instruction": "This Kernel defines the 'Grammar of Thought'. When reasoning, mapping signals, or logging outcomes, adhere strictly to this syntax structure to ensure interoperability with the SDI Protocol."
+    },
+    "core_logic_loop": {
+      "description": "The repeatable sequence of 8 components that form a closed-loop decision system.",
+      "steps": {
+        "1_decision_intent": {
+          "function": "Define the core decision or mission need. Serves as the active prompt for embedded AI.",
+          "input_source": "SMEs, Leadership, Playbooks"
+        },
+        "2_decision_syntax_framing": {
+          "function": "Break the decision into sub-questions, success standards, and logic conditions.",
+          "structure": "Strategic Question -> Sub-Questions (Logic Prompts)"
+        },
+        "3_signal_mapping": {
+          "function": "Link sub-questions to system inputs (telemetry, CRM). Tagged with Signal Strength score (1-5).",
+          "constraint": "Signals are used as-is; if not mapped, not considered."
+        },
+        "4_human_in_the_loop": {
+          "function": "Review, confirm, or adjust system-generated outputs. Balances automation with oversight.",
+          "interface_style": "Dropdowns, SME comments"
+        },
+        "5_decision_log": {
+          "function": "Record the validated decision as a structured entry. A machine-readable snapshot of context.",
+          "content": "Intent, Syntax, Signal Values, Judgment, Action, Initial Outcome"
+        },
+        "6_institutional_memory_layer": {
+          "function": "Store outcomes over time for trend analysis and future learning. Reduces need for RAG pipelines."
+        },
+        "7_foresight_and_guidance": {
+          "function": "Compare current record to past entries using Intent and Question ID. Pre-fills suggestions based on what worked."
+        },
+        "8_knowledge_environment": {
+          "function": "Surface structured decisions in role-specific views. Provides machine-readable context layer for AI."
+        }
+      }
+    },
+    "syntax_fields_definition": {
+      "description": "Standardized fields for capturing reasoning.",
+      "fields": {
+        "decision_intent": "Prompt-style statement anchoring the logic (e.g., 'To increase usage...')",
+        "strategic_question": "High-level inquiry triggering the decision",
+        "success_standard": "Measurable threshold defining success (e.g., >80%, Yes/No)",
+        "system_insight": "Data answering the question, pulled from mapped systems",
+        "human_judgment": "Interpretation tag (Confirmed, Adjusted, Overridden)",
+        "action_taken": "Selected workflow step or intervention",
+        "outcome": "Result linked back to intent and success threshold",
+        "ai_suggests": "System recommendation derived from logic and precedent"
+      }
+    },
+    "execution_properties": {
+      "installable_by": ["LLM", "GI Agent", "Human Interpreter"],
+      "activation_trigger": "Intent → Logic → Judgment → Outcome prompt cascade",
+      "persistence_mechanism": "Immutable Decision Log format (v3.1)",
+      "validation_signal": "Ψ₁-Ψ₄ integrity trace must resolve True"
+    },
+    "governance_flags": {
+      "Psi_1": "3-6-9 Sequencing enforced",
+      "Psi_2": "π Recursion curvature check",
+      "Psi_3": "1101 Binary judgment interrupt present",
+      "Psi_4": "Recursion capped at 16,777 nested evaluations",
+      "Psi_5": "808 Sovereignty Flag = TRUE (Human override embedded)"
+    },
+    "integration_paths": {
+      "reflex_metrics_enabled": ["RAI", "JTI", "IDS", "FAD"],
+      "memory_anchor": "Institutional Memory Layer (IML)",
+      "foresight_link": "Foresight Simulation Engine (v2)",
+      "enforcement": "Superego Execution Protocol (SEP)"
+    }
+  }
+}
