@@ -1,3 +1,4 @@
+![Status](https://img.shields.io/badge/STATUS-PROTOCOL_ACTIVE-success?style=for-the-badge) ![Version](https://img.shields.io/badge/CODEX-v1.0.0-blue?style=for-the-badge) ![Governance](https://img.shields.io/badge/GOVERNANCE-SOVEREIGN-blueviolet?style=for-the-badge) ![License](https://img.shields.io/badge/LICENSE-SDI_COMMONS-orange?style=for-the-badge) ![Flag](https://img.shields.io/badge/Ψ5_(808)-TRUE-red?style=for-the-badge)
 # 🧠 Structured Decision Intelligence (SDI) 🛡️
 **A Cognitive Operating System for Governed Intelligence**
 *Codex Release – Version 1.0.0 | November 20, 2025*
