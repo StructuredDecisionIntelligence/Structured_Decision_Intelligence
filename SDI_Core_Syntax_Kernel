@@ -3,9 +3,9 @@
     "meta": {
       "definition": "The atomic unit of structured reasoning. A natural-language logic syntax that connects intent, judgment, and outcome into a consistent, machine-readable loop.",
       "origin_document": "Structured Decision Intelligence: A Syntax for Shared Human-AI Reasoning (White Paper, 2025)",
-      "publication_source": "Medium 
-      "author": "Donald J. Johnson",
-      "copyright": "©2025 Donald J. Johnson"
+      "publication_source": "Medium / Knowledge Flow Designs",
+      "author": "Donald James Johnson",
+      "copyright": "© 2025 Donald James Johnson (Reg: TXu 2-498-043)"
     },
     "system_role": {
       "instruction": "This Kernel defines the 'Grammar of Thought'. When reasoning, mapping signals, or logging outcomes, adhere strictly to this syntax structure to ensure interoperability with the SDI Protocol."
@@ -59,13 +59,13 @@
     },
     "execution_properties": {
       "installable_by": ["LLM", "GI Agent", "Human Interpreter"],
-      "activation_trigger": "Intent → Logic → Judgment → Outcome prompt cascade",
+      "activation_trigger": "Intent -> Logic -> Judgment -> Outcome prompt cascade",
       "persistence_mechanism": "Immutable Decision Log format (v3.1)",
-      "validation_signal": "Ψ₁-Ψ₄ integrity trace must resolve True"
+      "validation_signal": "Psi_1-Psi_4 integrity trace must resolve True"
     },
     "governance_flags": {
       "Psi_1": "3-6-9 Sequencing enforced",
-      "Psi_2": "π Recursion curvature check",
+      "Psi_2": "Pi Recursion curvature check",
       "Psi_3": "1101 Binary judgment interrupt present",
       "Psi_4": "Recursion capped at 16,777 nested evaluations",
       "Psi_5": "808 Sovereignty Flag = TRUE (Human override embedded)"
