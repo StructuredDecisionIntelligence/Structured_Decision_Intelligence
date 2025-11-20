@@ -7,8 +7,8 @@
     },
     "simulation_constraints": {
       "input_basis": {
-        "requirement": "Must ingest verified 'parent_hash' sequences from the Immutable Ledger.",
-        "constraint": "Simulations cannot be run on unanchored or 'hallucinated' data points."
+        "requirement": "Must ingest verified 'parent_hash' sequences from the Immutable Logi-Chain.",
+        "constraint": "Simulations cannot be run on unanchored or 'hallucinated' data points. Precedent is the only valid seed."
       },
       "recursion_limit_forecast": {
         "setting": "Psi_4 (16,777)",
@@ -21,7 +21,7 @@
           "strategic_sim": 0.15,
           "existential_sim": 0.01
         },
-        "action_on_breach": "Flag simulation as 'Low Confidence / High Drift'."
+        "action_on_breach": "Flag simulation as 'Low Confidence / High Drift' and trigger COGWARN advisory."
       }
     },
     "scenario_generation_rules": {
