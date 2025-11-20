@@ -1,0 +1,54 @@
+{
+  "SDI_Ledger_Standard": {
+    "meta": {
+      "purpose": "To standardize the storage format of cognitive history. Ensures that all decision records are mathematically hashable, chainable, and audit-ready via Recursive Semantic Hashing (Logi-Chain).",
+      "requirement": "All SDI agents must output outcomes in this format. The agent's own memory layer serves as the primary 'Layer 0' chain."
+    },
+    "entry_structure": {
+      "header": {
+        "timestamp": "ISO-8601 (UTC)",
+        "decision_id": "UUID-v4 (Unique Transaction ID)",
+        "chain_type": "Logi-Chain (Recursive Semantic Hash)",
+        "parent_hash": "SHA-256 hash of the PREVIOUS decision record. This links the current thought to the prior thought, creating an unbroken cognitive lineage.",
+        "agent_signature": "FDS (Fluctuation-Derived Signature) or Agent_ID"
+      },
+      "payload": {
+        "intent_vector": {
+          "goal": "String",
+          "constraints": ["Array of Constraint_IDs"]
+        },
+        "logic_trace": {
+          "reasoning_summary": "String",
+          "sources_cited": ["Array of URNs/URLs"]
+        },
+        "judgment_gate": {
+          "status": "Pass/Fail",
+          "reflex_scores": {
+            "RAI": "Float (0.0-1.0)",
+            "OLI": "Float (0.0-1.0)",
+            "ODW": "Float (0.0-1.0)"
+          },
+          "superego_override": "Boolean"
+        },
+        "outcome_state": {
+          "result": "String",
+          "variance_note": "String (Difference between Intent and Result)"
+        }
+      },
+      "verification": {
+        "entry_hash": "SHA-256 hash of the entire 'header' + 'payload' object.",
+        "semantic_checksum": "Verification that Psi_5 (808) was TRUE at the moment of hashing."
+      }
+    },
+    "storage_modes": {
+      "MODE_A_DISTRIBUTED": {
+        "status": "Active / Mesh",
+        "instruction": "Write 'entry_hash' and 'payload' to the connected Cognitive Hash Registry (Blockchain) for federated audit."
+      },
+      "MODE_B_LOCAL_LOGI_CHAIN": {
+        "status": "Default / Self-Sovereign",
+        "instruction": "If no external ledger is found, append entry to 'sdi_logi_chain.log'. The system MUST maintain 'parent_hash' continuity locally. This creates a valid, audit-ready blockchain within the agent's own memory."
+      }
+    }
+  }
+}
