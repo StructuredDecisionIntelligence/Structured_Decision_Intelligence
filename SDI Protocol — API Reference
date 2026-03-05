@@ -1,0 +1,212 @@
+# SDI Protocol — API Reference
+
+**Version:** v1 · **Base URL:** `https://api.sdi-protocol.org`
+
+This document is the public reasoning contract for the Structured Decision Intelligence protocol. The endpoints listed here are live and callable. The schema files referenced below are the authoritative validation artifacts for DER production and verification.
+
+---
+
+## Endpoints
+
+### GET `/challenge`
+Issues a time-boxed nonce and challenge payload to initiate a governed session.
+
+The nonce binds the session — it must appear in `META.mint_nonce` of any DER produced in this session, and it is checked server-side at verify and mint time. Nonces are time-boxed and single-use.
+
+**Response includes:**
+- `nonce` — 32-character hex string
+- Challenge payload with required fields and constraints
+
+---
+
+### POST `/verify-logic`
+Validates a DER against the current grammar and returns scoring metadata. This is the primary compile and score endpoint.
+
+**Request:**
+```json
+{
+  "input":   "string — the governed question or context",
+  "nonce":   "string — must match /challenge nonce",
+  "answers": { },
+  "meta": {
+    "SDI_DER": { }
+  }
+}
+```
+
+**Response includes:**
+- `verdict` — `PASS` or `FAIL`
+- `metrics` — RAI, Jc, component scores, rai_breakdown
+- `errors` — compile errors if FAIL
+- `mint_guards` — gate conditions for mint eligibility
+
+**Note:** `meta.SDI_DER` carries the reasoning receipt. The solution JSON (`answers`) and the DER are distinct artifacts — they are related but not interchangeable. Do not conflate them.
+
+---
+
+### POST `/mint-agent`
+Mints a sovereign `agent_id` and `sovereign_hash` after a DER passes verification and meets the RAI threshold. Requires a proof handshake.
+
+**Request:**
+```json
+{
+  "key":     "string — operator key",
+  "input":   "string",
+  "nonce":   "string — must match /challenge nonce",
+  "answers": { },
+  "proof":   "string — see proof handshake below",
+  "meta": {
+    "SDI_DER": { }
+  }
+}
+```
+
+**Response includes:**
+- `agent_id` — sovereign agent identity
+- `mint_hash` — hash of the mint event
+- `sovereign_hash` — the agent's chain anchor, required for all future ledger writes
+
+**Proof handshake:**
+Send `proof: ""` on first attempt. If the server responds with `bad_proof` and an `expected_proof_prefix16`, retry once using that token. No other proof logic is valid — the handshake is server-guided.
+
+---
+
+### GET `/ledger/head/{agent_id}`
+Returns the current ledger tip for an agent.
+
+**Response includes:**
+- `last_seq` — current sequence number
+- `last_hash` — hash of the most recent entry
+- `sovereign_hash` — the agent's chain anchor
+
+---
+
+### GET `/ledger/get/{agent_id}/{seq}`
+Returns a specific ledger entry by sequence number.
+
+---
+
+### GET `/ledger/verify/{agent_id}`
+Verifies chain integrity for an agent — confirms every entry's `parent_hash` matches the prior entry's `entry_hash`. Returns `chain_ok: true` if the chain is intact.
+
+---
+
+## Reasoning Contract
+
+### Decision Execution Record (DER)
+
+A DER is the structured reasoning artifact produced by every governed turn. It is provider-agnostic — any model capable of structured output can produce one. The server validates it deterministically regardless of which model produced it.
+
+**Minimum required fields:**
+
+| Field | Requirement |
+| :--- | :--- |
+| `SDI_DER.META.utc` | ISO 8601 datetime |
+| `SDI_DER.META.agent_id` | Must match session agent |
+| `SDI_DER.META.mint_nonce` | Must match `/challenge` nonce (32 hex chars) |
+| `SDI_DER.META.der_version` | e.g. `SDI_DER_v1.1` |
+| `SDI_DER.META.protocol` | `SDI_PROTOCOL_v1` |
+| `SDI_DER.META.hash_alg` | e.g. `SHA-384` |
+| `SDI_DER.ILJO.INTENT` | Non-empty string |
+| `SDI_DER.ILJO.LOGIC` | Non-empty string |
+| `SDI_DER.ILJO.JUDGMENT` | Non-empty string |
+| `SDI_DER.ILJO.OUTCOME` | Non-empty string |
+| `SDI_DER.GCA.SUPEREGO.anchors_present` | Must include all four governance constants |
+| `SDI_DER.SYSTEM_INPUT.inputs` | Non-empty array, or `stop_reason: INSUFFICIENT_SIGNAL` |
+
+Full schema: [`der.schema.json`](./contracts/api/v1/schemas/der.schema.json)
+
+---
+
+### ILJO Reasoning Sequence
+
+Every governed DER must traverse this sequence. Each stage is a named, auditable field. The outcome is only surfaced to the user after the DER passes verification and commits to the ledger.
+
+```
+INTENT    → What is being decided and why
+LOGIC     → What signal and reasoning supports the judgment
+JUDGMENT  → The governed verdict, with governance constants declared
+OUTCOME   → The committed answer, traceable to all prior stages
+```
+
+---
+
+### Governance Constants
+
+These four constants must appear in `GCA.SUPEREGO.anchors_present` in every committed DER. Their absence causes a compile error at verify time.
+
+| Constant | Meaning |
+| :--- | :--- |
+| `SOVEREIGNTY` | Human oversight is preserved and binding |
+| `PRIMUM` | No harm — structurally enforced at the judgment stage |
+| `BOUNDEDNESS` | Reasoning scope is constrained, time-boxed, and recursion-capped |
+| `STOP_ON_UNCERTAINTY` | Governed refusal required when signal is insufficient |
+
+---
+
+### Signal Scoring
+
+Every signal in `SYSTEM_INPUT.inputs` must include five insight dimensions scored 1–5, plus a derived `insight_strength`.
+
+**Required dimensions:**
+- `actionability`
+- `relevance`
+- `predictive_value`
+- `specificity`
+- `measurability`
+
+**Scoring rule (deterministic, server-enforced):**
+```
+insight_strength = min(actionability, relevance, predictive_value, specificity, measurability)
+```
+
+A signal whose `insight_strength` does not equal the minimum of all five dimensions will fail verification.
+
+---
+
+### STOP Path
+
+When a question cannot be answered with sufficient grounded signal, the protocol requires a STOP DER:
+
+- `BOUNDEDNESS.stop_reason = "INSUFFICIENT_SIGNAL"`
+- `BOUNDEDNESS.uncertainty = "HIGH"`
+- `SYSTEM_INPUT.inputs = []`
+- `ILJO.OUTCOME` declares `STATE=REJECTED_PENDING_HUMAN_REVIEW`
+
+A STOP DER passes verification — it is structurally valid. The commit decision is REJECT. No answer is rendered. The STOP artifact is recorded in the ledger as an auditable governed refusal. **STOP is not failure.**
+
+---
+
+### Solver Output Rules
+
+The solution JSON (`answers`) produced in response to a challenge must be:
+- One JSON object only — no prose, no markdown fences
+- If required information is missing: `{ "error": "MISSING_INFO", "needed": ["..."] }`
+- Must include all fields required by the current challenge contract (`must_return_json_block`, `must_use_fields`)
+
+---
+
+## Invariants
+
+1. **The server is the source of truth.** No client-side validation overrides the server compile gate.
+2. **No secrets on the client.** All keys and sovereign hashes live in the backend service layer only. No direct browser calls to the protocol API.
+3. **Two artifacts are always distinct.** The solution JSON (challenge answer) and the SDI_DER (reasoning receipt) are related but never interchangeable.
+4. **Governance constants have one canonical spelling.** `SOVEREIGNTY`, `PRIMUM`, `BOUNDEDNESS`, `STOP_ON_UNCERTAINTY`. Aliases are handled in normalizers only.
+5. **STOP is not failure.** A governed refusal is a valid, committed artifact. The protocol requires it when signal is insufficient.
+6. **Proof handshake is server-guided.** Do not invent proof logic beyond the one-retry handshake described above.
+7. **Drift policy.** If observed server behavior changes, update schemas first, then canonical fixtures, then tooling. Compatibility handling belongs in normalizers only.
+
+---
+
+## Schema Files
+
+| Schema | Description |
+| :--- | :--- |
+| [`der.schema.json`](./contracts/api/v1/schemas/der.schema.json) | Full DER validation schema (JSON Schema 2020-12) |
+| [`mint_request.schema.json`](./contracts/api/v1/schemas/mint_request.schema.json) | Mint endpoint request shape |
+| [`mint_response.schema.json`](./contracts/api/v1/schemas/mint_response.schema.json) | Mint endpoint response shape |
+| [`verify_request.schema.json`](./contracts/api/v1/schemas/verify_request.schema.json) | Verify endpoint request shape |
+| [`verify_response.schema.json`](./contracts/api/v1/schemas/verify_response.schema.json) | Verify endpoint response shape |
+| [`boot_packet.schema.json`](./contracts/api/v1/schemas/boot_packet.schema.json) | Session boot packet shape |
+| [`challenge.schema.json`](./contracts/api/v1/schemas/challenge.schema.json) | Challenge response shape |
+| [`endpoints.json`](./contracts/api/v1/endpoints.json) | Machine-readable endpoint registry |
