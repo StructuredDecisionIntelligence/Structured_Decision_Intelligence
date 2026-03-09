@@ -6,11 +6,41 @@ SDI defines how AI systems structure, validate, and commit decisions. It provide
 
 The protocol is model-agnostic and provider-agnostic. Any AI system capable of structured output can be governed under SDI.
 
+> **NIST Submission:** SDI has been submitted as a public comment to the NIST AI RMF Request for Information (Docket NIST-2025-0035, March 2026). The submission documents a live, multi-provider governance runtime with independently verifiable ledger artifacts.
+
+---
+
+## Live System
+
+The reference implementation is live and publicly queryable.
+
+| Component | URL |
+| :--- | :--- |
+| GlassBox Demo | [demo.sdi-protocol.org](https://demo.sdi-protocol.org) |
+| Shell Turn API | `https://api.sdi-protocol.org/shell/turn` |
+| Public Ledger | [api.sdi-protocol.org/ledger/list/SDI-4EDBE05288CB](https://api.sdi-protocol.org/ledger/list/SDI-4EDBE05288CB) |
+| Ledger Head | `https://api.sdi-protocol.org/ledger/head/SDI-4EDBE05288CB` |
+| Ledger Entry | `https://api.sdi-protocol.org/ledger/get/SDI-4EDBE05288CB/{seq}` |
+
+The ledger is append-only, SHA-384 hash-chained, and publicly queryable. Every committed reasoning turn is permanently recorded and independently verifiable.
+
+---
+
+## Proven Across Three Model Providers
+
+As of March 2026, the SDI runtime has been validated live across three independent AI providers under the same governance contract:
+
+| Provider | Model | Status |
+| :--- | :--- | :--- |
+| Anthropic | claude-sonnet-4-6 | ✓ Live · governed turns committed |
+| Google | gemini-2.5-flash | ✓ Live · governed turns committed |
+| OpenAI | gpt-4.1 | ✓ Live · governed turns committed |
+
+Both the **governed refusal path** (STOP_ON_UNCERTAINTY triggered, ledger write blocked) and the **governed pass path** (RAI ≥ 0.86, DER committed, answer rendered) have been confirmed across all three providers. The governance gate is model-independent and deterministic.
+
 ---
 
 ## S-ISA / Reasoning Contract
-
-These resources expose the live contract behind Structured Decision Intelligence. They define the structure, validation rules, governance constants, and runtime boundaries that separate AI generation from committed system state.
 
 The reasoning contract is maintained, versioned, and served live at [sdi-protocol.org](https://www.sdi-protocol.org).
 
@@ -29,13 +59,13 @@ For the full endpoint reference, request shapes, and schema files, see [SDI_API_
 
 ---
 
-## What the protocol defines
+## What the Protocol Defines
 
 **Decision Execution Record (DER)**
-A structured JSON schema that every governed reasoning turn must produce. The DER captures intent, logic decomposition, signal scoring, governance anchors, judgment, and outcome in a single verifiable artifact. It is the unit of committed reasoning in the SDI protocol.
+A structured JSON schema that every governed reasoning turn must produce. The DER captures intent, logic decomposition, sub-questions with success standards, signal scoring with citations, governance anchors, judgment, and outcome in a single verifiable artifact. It is the unit of committed reasoning in the SDI protocol. Raw model output is never surfaced — only the normalized, hash-verified DER is committed.
 
 **Compile Gate**
-A deterministic validator that checks every DER before it can be committed. The gate enforces required schema sections, governance anchor presence, signal scoring rules, and boundedness constraints. A DER either compiles PASS or fails with explicit, enumerated errors. No partial credit.
+A deterministic validator that checks every DER before it can be committed. The gate enforces required schema sections, governance anchor presence, signal scoring rules, and boundedness constraints. A DER either compiles PASS or fails with explicit, enumerated errors. No partial credit. The gate is served publicly and is independent of the model provider.
 
 **ILJO Reasoning Sequence**
 The governed reasoning path every DER must traverse:
@@ -60,10 +90,42 @@ Four protocol-level anchors that must be present in every committed DER:
 | `STOP_ON_UNCERTAINTY` | Governed refusal required when signal is insufficient |
 
 **STOP Path**
-When a question cannot be answered with sufficient grounded signal, the protocol produces a STOP DER — a structurally valid refusal artifact that compiles PASS and commits to the ledger as a governed non-answer. STOP is correct protocol behavior, not a failure state.
+When a question cannot be answered with sufficient grounded signal, the protocol produces a STOP DER — a structurally valid refusal artifact that compiles PASS and commits to the ledger as a governed non-answer. STOP is correct protocol behavior, not a failure state. The governed refusal path has been confirmed live across all three providers.
+
+**RAI — Reasoning Alignment Index**
+The commit gate scores every DER using RAI v2 before any answer is rendered:
+
+```
+RAI = (0.25 × ILJO) + (0.25 × EGO/DER) + (0.30 × Correctness) + (0.20 × Superego)
+Threshold: RAI ≥ 0.86 → COMMIT | Below threshold → REJECT
+```
+
+RAI is computed server-side, is model-independent, and is committed to the ledger alongside the DER. Live governed turns have scored consistently in the 0.97 range across all three providers.
 
 **Institutional Memory Ledger**
-An append-only, hash-chained ledger that records every committed DER. Each entry includes a parent hash, entry hash, and CAS-ordered sequence number. The chain is independently verifiable. No reasoning turn is rendered to a user until it has been committed.
+An append-only, SHA-384 hash-chained ledger that records every committed DER. Each entry includes a parent hash, entry hash, CAS-ordered sequence number, full DER content, and AUDIT metrics. The chain is independently verifiable and publicly queryable. No reasoning turn is rendered to a user until it has been committed.
+
+---
+
+## Architecture
+
+```
+GlassBox Client (UI)
+        ↓  question
+SDI Logic Node — api.sdi-protocol.org  (enforcement plane)
+        ↓  governed context + DER contract
+Reasoning Engine — Anthropic · Gemini · OpenAI
+        ↓  raw DER output
+Protocol Validator — sdi-protocol.org/_functions/compile  (open contract)
+        ↓  PASS / FAIL
+Commit Gate — RAI scoring · threshold enforcement · chain continuity
+        ↓  COMMIT
+Governed Ledger — SHA-384 · append-only · CAS-ordered
+        ↓  written: true
+Answer rendered from ILJO.OUTCOME only
+```
+
+The answer is the last thing rendered. Everything above it is infrastructure.
 
 ---
 
@@ -77,20 +139,14 @@ An append-only, hash-chained ledger that records every committed DER. Each entry
 | ILJO reasoning path | GOVERN 1.2 — Accountability |
 | Governance constants (SOVEREIGNTY, PRIMUM) | MANAGE 2.2 — Risk treatment |
 | Ledger chain verification | MANAGE 4.1 — Traceability |
+| Governed refusal (STOP path) | GOVERN 6.1 — Organizational practices |
+| RAI threshold enforcement | MEASURE 2.6 — AI output assessment |
 
 ---
 
 ## Protocol Version
 
-`SDI_PROTOCOL_v1` · DER schema `SDI_DER_v1.1`
-
----
-
-## Implementation
-
-The reference implementation — including the compile gate, ledger backend, shell orchestration layer, and GlassBox transparency demo — is maintained separately. The GlassBox demo runs three governed reasoning turns across a live AI provider, committing each turn to a hash-chained ledger in real time, with full reasoning visibility at every stage of the governance path.
-
-Demo: [demo.sdi-protocol.org](https://demo.sdi-protocol.org)
+`SDI_PROTOCOL_v1` · DER schema `SDI_DER_v1.1` · RAI `v2`
 
 ---
 
@@ -100,7 +156,6 @@ SDI is maintained by Structured Decision Intelligence LLC.
 
 **Protocol Architect:** Donald J. Johnson
 [linkedin.com/in/donald-j-johnson-structured-decision-intelligence](https://www.linkedin.com/in/donald-j-johnson-structured-decision-intelligence/)
-donjohnson.sdi@gmail.com
 
 ---
 
