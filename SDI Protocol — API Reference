@@ -19,8 +19,13 @@ The nonce binds the session — it must appear in `META.mint_nonce` of any DER p
 
 ---
 
-### POST `/verify-logic`
-Validates a DER against the current grammar and returns scoring metadata. This is the primary compile and score endpoint.
+### POST `/verify-logic` — Gated
+Validates a DER against the current grammar and 
+returns scoring metadata. 
+
+This endpoint is currently available to authorized 
+operators only. Contact donjohnson.sdi@gmail.com 
+to request access.
 
 **Request:**
 ```json
@@ -44,8 +49,11 @@ Validates a DER against the current grammar and returns scoring metadata. This i
 
 ---
 
-### POST `/mint-agent`
-Mints a sovereign `agent_id` and `sovereign_hash` after a DER passes verification and meets the RAI threshold. Requires a proof handshake.
+### POST `/mint-agent` — Gated
+Mints a sovereign agent_id after a DER passes 
+verification. Requires an operator key.
+
+Currently available to authorized operators only.
 
 **Request:**
 ```json
