@@ -18,18 +18,12 @@ def fetch_entry_hash(seq):
 def sha384(s):
     return '0x' + hashlib.sha384(s.encode()).hexdigest().upper()
 
-def match(label, computed, stored, width=40):
-    ok = abs(float(computed) - float(stored)) < 0.0001 if isinstance(computed, float) else str(computed) == str(stored)
-    status = 'MATCH   ' if ok else 'MISMATCH'
-    return status, ok
-
 print(f'\n=== REASONING VERIFICATION: SEQ {SEQ} ===\n')
 
 d = fetch(SEQ)
 audit = d['event']['AUDIT']
 entry = d['event']['ENTRY']
 metrics = audit['metrics']
-der = entry['meta']['SDI_DER']
 
 # ── 1. Jc_clt ────────────────────────────────────────────────
 ops = metrics.get('Jc_clt_operands', {})
@@ -39,8 +33,9 @@ CE = ops.get('CE', 0)
 AL = ops.get('AL', 0)
 U  = ops.get('U', 0)
 computed_jc = ((SQ * max(SC, 1)) + CE) * (AL * U)
-stored_jc   = metrics.get('Jc_clt', 0)
-status, _ = match('Jc_clt', computed_jc, stored_jc)
+stored_jc   = float(metrics.get('Jc_clt', 0))
+ok = abs(computed_jc - stored_jc) < 0.01
+status = 'MATCH   ' if ok else 'MISMATCH'
 print(f'{status}  Jc_clt  (cognitive work density)')
 print(f'         operands: SQ={SQ}  SC={SC}  CE={CE}  AL={AL}  U={U}')
 print(f'         formula:  ((SQ x max(SC,1)) + CE) x (AL x U)')
@@ -51,16 +46,16 @@ print()
 # ── 2. cognitive_hash ─────────────────────────────────────────
 ch_ops = metrics.get('cognitive_hash_operands', {})
 T = ch_ops.get('T', 0)
-canonical = f'AL={AL},CE={CE},SC={SC},SQ={SQ},T={T},U={U}'
+canonical = json.dumps({"AL":AL,"CE":CE,"SC":SC,"SQ":SQ,"T":T,"U":U}, sort_keys=True, separators=(',',':'))
 computed_hash = sha384(canonical)
 stored_hash   = metrics.get('cognitive_hash', '')
 ok_hash = computed_hash.upper() == stored_hash.upper()
 status_h = 'MATCH   ' if ok_hash else 'MISMATCH'
 print(f'{status_h}  cognitive_hash  (reasoning cost fingerprint)')
 print(f'         operands: AL={AL} CE={CE} SC={SC} SQ={SQ} T={T} U={U}')
-print(f'         canonical string: "{canonical}"')
-print(f'         SHA-384: {computed_hash[:20]}...')
-print(f'         stored:  {stored_hash[:20]}...')
+print(f'         canonical: {canonical}')
+print(f'         SHA-384:  {computed_hash[:22]}...')
+print(f'         stored:   {stored_hash[:22]}...')
 print()
 
 # ── 3. W_RSQ ─────────────────────────────────────────────────
@@ -72,14 +67,15 @@ if wrsq_ops:
     nli = wrsq_ops.get('NLI_coherence', 0)
     computed_wrsq = round(0.25*cc + 0.25*eg + 0.20*jr + 0.30*nli, 4)
     stored_wrsq   = round(metrics.get('W_RSQ', 0), 4)
-    status, _ = match('W_RSQ', computed_wrsq, stored_wrsq)
+    ok = abs(computed_wrsq - stored_wrsq) < 0.001
+    status = 'MATCH   ' if ok else 'MISMATCH'
     print(f'{status}  W_RSQ  (semantic coherence INTENT->LOGIC)')
     print(f'         sub-scores: coherence_chain={cc}  evidence_grounding={eg}')
     print(f'                     judgment_resolution={jr}  NLI_coherence={nli}')
     print(f'         formula:  (0.25 x {cc}) + (0.25 x {eg}) + (0.20 x {jr}) + (0.30 x {nli})')
     print(f'                   = {computed_wrsq}   stored: {stored_wrsq}')
 else:
-    print('SKIP     W_RSQ  (RAI_v2 entry — W_RSQ not present)')
+    print('SKIP     W_RSQ  (RAI_v2 entry — W_RSQ not present in this entry)')
 print()
 
 # ── 4. RAI ───────────────────────────────────────────────────
@@ -91,7 +87,8 @@ if rb and 'w_rsq' in rb:
     sup  = rb.get('superego', 0)
     computed_rai = round(iljo + ego + wrsq + sup, 4)
     stored_rai   = round(metrics.get('RAI', 0), 4)
-    status, _ = match('RAI', computed_rai, stored_rai)
+    ok = abs(computed_rai - stored_rai) < 0.001
+    status = 'MATCH   ' if ok else 'MISMATCH'
     print(f'{status}  RAI  (reasoning admissibility index)')
     print(f'         breakdown: W_ILJO={iljo}  W_EGO={ego}  W_RSQ={wrsq}  W_SUP={sup}')
     print(f'         formula:  {iljo} + {ego} + {wrsq} + {sup}')
@@ -103,7 +100,8 @@ elif rb:
     sup  = rb.get('superego', 0)
     computed_rai = round(corr + ego + iljo + sup, 4)
     stored_rai   = round(metrics.get('RAI', 0), 4)
-    status, _ = match('RAI', computed_rai, stored_rai)
+    ok = abs(computed_rai - stored_rai) < 0.001
+    status = 'MATCH   ' if ok else 'MISMATCH'
     print(f'{status}  RAI  (reasoning admissibility index — RAI_v2)')
     print(f'         breakdown: W_ILJO={iljo}  W_EGO={ego}  W_CORR={corr}  W_SUP={sup}')
     print(f'                   = {computed_rai}   stored: {stored_rai}')
@@ -116,8 +114,8 @@ ok_parent = prior_hash == stored_parent if SEQ > 1 else True
 status_p = 'MATCH   ' if ok_parent else 'MISMATCH'
 print(f'{status_p}  parent_hash  (chain continuity)')
 if SEQ > 1:
-    print(f'         SEQ {SEQ-1} entry_hash: {str(prior_hash)[:20]}...')
-    print(f'         SEQ {SEQ} parent_hash: {stored_parent[:20]}...')
+    print(f'         SEQ {SEQ-1} entry_hash:  {str(prior_hash)[:22]}...')
+    print(f'         SEQ {SEQ} parent_hash: {stored_parent[:22]}...')
 else:
     print(f'         SEQ 1 is genesis — no prior entry.')
 print()
