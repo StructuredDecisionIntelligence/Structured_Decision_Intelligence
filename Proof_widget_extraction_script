@@ -6,12 +6,21 @@ audit = event.get('AUDIT', {})
 metrics = audit.get('metrics', {})
 der = entry.get('meta', {}).get('SDI_DER', {})
 iljo = der.get('ILJO', {})
-sub_qs = iljo.get('LOGIC', {}).get('sub_questions_resolved', [])
+logic = iljo.get('LOGIC', {})
+sub_qs = logic.get('sub_questions_resolved', [])
 inputs = der.get('SYSTEM_INPUT', {}).get('inputs', [])
 insight = metrics.get('insight_rollup', {})
+composition = metrics.get('composition', {})
+self_conflict = metrics.get('self_report_conflict', {})
+rai_breakdown = metrics.get('rai_breakdown', {})
+w_rsq_ops = metrics.get('W_RSQ_operands', {})
 
-# lookup real citation title/ablation by signal_id
 sig_lookup = {s.get('signal_id'): s for s in inputs}
+weight_lookup = {w.get('sq_id'): w for w in composition.get('weights', [])}
+
+def trunc(s, n=220):
+    s = s or ''
+    return s if len(s) <= n else s[:n].rstrip() + '...'
 
 print('===================================================')
 print(' AUDIT')
@@ -21,9 +30,16 @@ print('verdict:           ', audit.get('verdict'))
 print('computed_verdict:  ', metrics.get('judgment_conjunction', {}).get('computed_verdict'))
 print('Jc_clt:            ', metrics.get('Jc_clt'))
 print('RAI:               ', metrics.get('RAI'))
+print('  rai breakdown:   ', f"ILJO {rai_breakdown.get('iljo')} + EGO/GCA {rai_breakdown.get('ego_der_gca')} + W_RSQ {rai_breakdown.get('w_rsq')}")
+print('  W_RSQ operands:  ', f"coherence {w_rsq_ops.get('coherence_chain')}, evidence_grounding {w_rsq_ops.get('evidence_grounding')}, judgment_resolution {w_rsq_ops.get('judgment_resolution')}, NLI_coherence {w_rsq_ops.get('NLI_coherence')}")
 print('entry_hash:        ', entry.get('entry_hash'))
 print('cognitive_hash:    ', metrics.get('cognitive_hash'))
 print('sdi_signature:     ', entry.get('sdi_signature', {}).get('value'))
+if self_conflict.get('detected'):
+    print()
+    print('self_report_conflict: the model authored', repr(self_conflict.get('authored_state')),
+          '- the gate independently computed', repr(self_conflict.get('judgment_conjunction_verdict')))
+    print('Both are recorded. The gate does not trust the model\'s own self-report.')
 
 print()
 print('===================================================')
@@ -35,18 +51,28 @@ print()
 print('===================================================')
 print(' LOGIC')
 print('===================================================')
+print('strategic question:', logic.get('strategic_question', ''))
 for sq in sub_qs:
     p = sq.get('predicate', {})
+    w = weight_lookup.get(sq.get('sub_question_id'), {})
     print()
     print(f"  [{sq.get('sub_question_id')}] {sq.get('prompt', '')}")
     print(f"      predicate: {p.get('lhs')} {p.get('op')} {p.get('rhs')}  ->  {sq.get('verdict')}")
+    if w:
+        print(f"      computed weight in final verdict: {w.get('weight'):.4f}  (branch max {w.get('branch_max')})")
     for sig in sq.get('signals', []):
         full = sig_lookup.get(sig.get('signal_id'), {})
         cite = full.get('citation', {})
         ablation = full.get('ablation_outcome', sig.get('ablation_outcome'))
         print(f"      citation: {cite.get('title', sig.get('signal_id'))}")
         print(f"                {cite.get('url', sig.get('citation_url', ''))}")
-        print(f"                ablation_outcome: {ablation}")
+        print(f"                retrieved via: {full.get('provenance', '')}")
+        print(f"                relevance: {full.get('relevance')}/5   insight_strength (this source): {full.get('insight_strength')}/5   ablation_outcome: {ablation}")
+        srcdim = full.get('source_support_dimensions', {})
+        rigordim = full.get('question_rigor_dimensions', {})
+        print(f"                source_support: specificity {srcdim.get('specificity')}/5, measurability {srcdim.get('measurability')}/5")
+        print(f"                question_rigor: actionability {rigordim.get('actionability')}/5, predictive_value {rigordim.get('predictive_value')}/5")
+        print(f"                raw excerpt: {trunc(full.get('raw_value'))}")
 
 print()
 print('===================================================')
@@ -58,9 +84,10 @@ print('rollup_type:       ', judgment.get('rollup_type'))
 print()
 print(judgment.get('conjunction_prose', ''))
 print()
-print('insight strength:  ', f"{insight.get('overall', {}).get('percentage', 0) * 100:.1f}%")
-print('strong dimensions: ', ', '.join(insight.get('strong_dimensions', [])))
-print('weak dimensions:   ', ', '.join(insight.get('weak_dimensions', [])))
+print('aggregate insight strength across all cited sources:', f"{insight.get('overall', {}).get('percentage', 0) * 100:.1f}%",
+      f"({insight.get('overall', {}).get('achieved')}/{insight.get('overall', {}).get('max')})")
+print('strong dimensions:  ', ', '.join(insight.get('strong_dimensions', [])))
+print('weak dimensions:    ', ', '.join(insight.get('weak_dimensions', [])))
 
 print()
 print('===================================================')
