@@ -1,0 +1,33 @@
+import json, sys, math
+
+d = json.load(sys.stdin)
+event = d.get('event', {})
+audit = event.get('AUDIT', {})
+metrics = audit.get('metrics', {})
+jc_ops = metrics.get('Jc_clt_operands', {})
+
+sq = jc_ops.get('SQ')
+sc = jc_ops.get('SC')
+ce = jc_ops.get('CE')
+al = jc_ops.get('AL')
+u = jc_ops.get('U')
+published = metrics.get('Jc_clt')
+
+sc_eff = max(sc, 1)
+computed = ((sq * sc_eff) + ce) * (math.log(al + 1) * u)
+computed = round(computed, 2)
+
+print('=== Jc_clt, computed live from this record\'s own declared operands ===')
+print()
+print(f'SQ (sub-questions)   = {sq}')
+print(f'SC (signals)         = {sc}')
+print(f'CE (corrections)     = {ce}')
+print(f'AL (answer length)   = {al}')
+print(f'U  (uncertainty)     = {u}')
+print()
+print('formula: ((SQ x max(SC,1)) + CE) x (ln(AL+1) x U)')
+print(f'         (({sq} x {sc_eff}) + {ce}) x (ln({al}+1) x {u})')
+print()
+print(f'computed here : {computed}')
+print(f'published     : {published}')
+print(f'match         : {computed == published}')
