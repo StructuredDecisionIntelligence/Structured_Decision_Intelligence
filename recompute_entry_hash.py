@@ -4,6 +4,7 @@ d = json.load(sys.stdin)
 event = d.get('event', {})
 entry = event.get('ENTRY', {})
 meta = entry.get('meta', {})
+audit = event.get('AUDIT', {})
 
 def canon_json(obj):
     return json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
@@ -14,13 +15,14 @@ def sha384_hex_upper(s):
 declared_entry_hash = entry.get('entry_hash')
 declared_parent_hash = entry.get('parent_hash')
 
-# Step 1: der_hash. Check for a stored value first, only compute
-# from the full DER if genuinely absent. Using the stored value
-# is not a fallback, it is the correct first step whenever present.
-stored_der_hash = meta.get('der_hash')
+# Step 1: der_hash. This lives at the top level of the record,
+# under AUDIT, a sibling of ENTRY, not nested inside ENTRY.meta.
+# Check there first, and only compute from the full DER if
+# genuinely absent from both locations.
+stored_der_hash = audit.get('der_hash') or meta.get('der_hash')
 if stored_der_hash:
     der_hash = stored_der_hash
-    der_hash_source = 'stored on record, used as-is'
+    der_hash_source = 'stored on record (AUDIT.der_hash), used as-is'
 else:
     full_der = meta.get('SDI_DER', {})
     der_hash = '0x' + sha384_hex_upper(canon_json(full_der))
