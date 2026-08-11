@@ -1,21 +1,17 @@
 import json, sys, hashlib
 
 # recompute_entry_hash.py
-# Protocol v1, seq 355 and forward.
+# SDI Protocol v1. Records at seq 355 and forward.
 #
-# This mirrors the kernel's canonical_entry_string() exactly: same field
-# set, same source paths, same fallbacks. Notable differences from the
-# prior published version:
+# Recomputes a record's entry_hash from the record's own contents and
+# compares it against the declared value. Nothing outside the record is
+# needed.
 #
-#   1. der_hash is read from entry["meta"]["der_hash"], NOT from AUDIT.
-#      The prior script read AUDIT first. A value exists in both places
-#      on a pulled record; the kernel uses meta.
-#   2. audit_hash is the ninth field. The challenge block is gone,
-#      removed because its three values were permanently null on every
-#      episodic act.
-#   3. success_met is read from meta, not from entry.
+# Two of the nine packet fields are derived rather than read directly:
+#   der_hash    never stored, computed here over meta.SDI_DER
+#   audit_hash  always stored at meta.audit_hash, read as-is
 #
-# Verify before publishing:
+# Usage:
 #   curl -s https://api.sdi-protocol.org/ledger/get/SDI-5AA8C82A2537/355 \
 #     | python3 recompute_entry_hash.py
 
@@ -23,7 +19,6 @@ d = json.load(sys.stdin)
 event = d.get('event', {})
 entry = event.get('ENTRY', {})
 meta = entry.get('meta', {}) if isinstance(entry.get('meta'), dict) else {}
-audit = event.get('AUDIT', {})
 
 
 def canon_json(obj):
@@ -36,21 +31,12 @@ def sha384_hex_upper(s):
 
 declared_entry_hash = entry.get('entry_hash')
 
-# Step 1: der_hash. The kernel reads meta["der_hash"] and computes from
-# the full SDI_DER only if that is absent. It does not read AUDIT.
-der_obj = meta.get('SDI_DER') if isinstance(meta.get('SDI_DER'), dict) else None
-der_hash = meta.get('der_hash')
-if not der_hash and der_obj:
-    der_hash = '0x' + sha384_hex_upper(canon_json(der_obj))
-    der_hash_source = 'computed from meta.SDI_DER, absent from meta.der_hash'
-elif der_hash:
-    der_hash_source = 'stored at meta.der_hash, used as-is'
-else:
-    der_hash_source = 'NOT FOUND, packet will not match'
+# der_hash: SHA-384 over the canonically serialized reasoning record.
+der_obj = meta.get('SDI_DER') if isinstance(meta.get('SDI_DER'), dict) else {}
+der_hash = '0x' + sha384_hex_upper(canon_json(der_obj))
 
-# Step 2: the nine-field chain packet, field for field as the kernel
-# builds it. Written in an arbitrary order deliberately: canon_json's
-# sort_keys=True makes the order below irrelevant to the result.
+# The nine-field chain packet. Written in an arbitrary order deliberately:
+# canon_json's sort_keys=True makes the order below irrelevant.
 chain_packet = {
     'v':           entry.get('v', 'SDI_CHAIN_v1'),
     'hash_alg':    entry.get('hash_alg', 'SHA-384'),
@@ -58,28 +44,15 @@ chain_packet = {
     'seq':         entry.get('seq'),
     'parent_hash': entry.get('parent_hash'),
     'type':        entry.get('type'),
-    'der_hash':    der_hash or None,
-    'audit_hash':  meta.get('audit_hash', None),
-    'success_met': meta.get('success_met', None),
+    'der_hash':    der_hash,
+    'audit_hash':  meta.get('audit_hash'),
+    'success_met': meta.get('success_met'),
 }
 
 computed_entry_hash = '0x' + sha384_hex_upper(canon_json(chain_packet))
 
-print("=== entry_hash, recomputed independently from this record's own declared fields ===")
+print("=== entry_hash, recomputed from this record's own contents ===")
 print()
-print('der_hash source :', der_hash_source)
-print()
-
-# Diagnostic: if a der_hash also exists under AUDIT and differs from the
-# one the kernel uses, that is the mismatch, and it is worth seeing.
-audit_der = audit.get('der_hash')
-if audit_der and audit_der != der_hash:
-    print('NOTE: AUDIT.der_hash differs from meta.der_hash.')
-    print('  meta.der_hash  :', der_hash)
-    print('  AUDIT.der_hash :', audit_der)
-    print('  The kernel uses meta. AUDIT is not the packet input.')
-    print()
-
 print('chain packet, nine fields, canonically serialized with sorted keys')
 print('(the order the fields are listed in this script is irrelevant,')
 print('canon_json sorts them alphabetically regardless):')
