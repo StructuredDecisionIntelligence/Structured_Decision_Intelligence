@@ -63,7 +63,23 @@ for sq in sub_qs:
     w = weight_lookup.get(sq.get('sub_question_id'), {})
     print()
     print(f"  [{sq.get('sub_question_id')}] {sq.get('prompt', '')}")
-    print(f"      predicate: {p.get('lhs')} {p.get('op')} {p.get('rhs')}  ->  {sq.get('verdict')}")
+    # Fix: lhs/op/rhs are absent on any sub-question that proposed new
+    # vocabulary and never had its predicate carried forward into compact
+    # form -- confirmed on seq 384, where all four sub-questions have this
+    # shape. The old, unguarded f-string printed "predicate: None None None"
+    # in that case. canonical_phrasing is unconditionally present on the
+    # same predicate object and carries the real finding as prose, so it's
+    # used as the fallback rather than showing a None-filled line. A full
+    # sentence doesn't read well under a "predicate:" label built for a
+    # compact triple, so the fallback uses "finding:" instead, to signal
+    # that this is the same underlying claim in prose form, not a
+    # differently-formatted equation.
+    if p.get('lhs') is not None and p.get('op') is not None and p.get('rhs') is not None:
+        print(f"      predicate: {p.get('lhs')} {p.get('op')} {p.get('rhs')}  ->  {sq.get('verdict')}")
+    elif p.get('canonical_phrasing'):
+        print(f"      finding: {p.get('canonical_phrasing')}  ->  {sq.get('verdict')}")
+    else:
+        print(f"      predicate: {p.get('lhs')} {p.get('op')} {p.get('rhs')}  ->  {sq.get('verdict')}")
     if w:
         print(f"      computed weight in final verdict: {w.get('weight'):.4f}  (branch max {w.get('branch_max')})")
     for sig in sq.get('signals', []):
