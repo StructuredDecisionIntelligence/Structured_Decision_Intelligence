@@ -1,261 +1,171 @@
 # Structured Decision Intelligence (SDI)
 
-**The first Reckoner Machine: a computing architecture whose primitive is the governed reasoning act.**
+**Diagnostic instruments and public contracts for inspecting a reasoning computer.**
 
-SDI defines how AI systems structure, validate, and commit reasoning. Every governed turn produces a Decision Execution Record (DER), evaluated at a two-phase compile gate before it may advance the hash-chained ledger. The model generates. The gate governs. The ledger remembers.
+This repository is not a codebase. The SDI kernel is not here. What is here
+is everything needed to check the system's claims from the outside: scripts
+that recompute the seals and scores on real committed reasoning acts, and
+pointers to the live contract endpoints that define what a valid act is.
+The machine itself lives at [sdi-protocol.org](https://www.sdi-protocol.org).
+That site asks to be checked rather than believed. This repository is how.
 
-The protocol is model-agnostic and provider-agnostic. Any AI system capable of structured output can be governed under SDI. The reasoning contract is open and publicly verifiable.
-
-> **NIST Submission:** SDI has been submitted as a public comment to the NIST AI Risk Management Framework Request for Information (Docket NIST-2025-0035, March 2026). The submission documents a live, multi-provider governance runtime with independently verifiable ledger artifacts.
-
-> **USPTO Patent Application:** 19/425,875. Copyright TXu 2-498-043.
-
----
-
-## Live System
-
-The reference implementation is live and publicly queryable. No account or API key required to verify the chain.
-
-| Component | URL |
-| :--- | :--- |
-| Foundations | [sdi-protocol.org/foundations](https://www.sdi-protocol.org/foundations) |
-| Transparency | [sdi-protocol.org/transparency](https://www.sdi-protocol.org/transparency) |
-| Agent Portal | [agents.sdi-protocol.org](https://agents.sdi-protocol.org) |
-| Minting Terminal | [mint.sdi-protocol.org](https://mint.sdi-protocol.org) |
-| Public Ledger (Longview) | [api.sdi-protocol.org/ledger/list/SDI-5AA8C82A2537](https://api.sdi-protocol.org/ledger/list/SDI-5AA8C82A2537) |
-| Chain Verification | `https://api.sdi-protocol.org/ledger/verify/SDI-5AA8C82A2537?hashes_only=true` |
-| Ledger Entry | `https://api.sdi-protocol.org/ledger/get/SDI-5AA8C82A2537/{seq}` |
-
-The Longview chain (SDI-5AA8C82A2537) is the primary public chain. It is append-only, SHA-384 hash-chained, and publicly queryable from entry 1 to the current tip. The demo chain (SDI-4EDBE05288CB) is the NIST submission chain and is not publicly readable.
+> **NIST Submission:** The SDI specification was submitted as a public
+> comment to the NIST AI Risk Management Framework Request for Information
+> (Docket NIST-2025-0035, March 2026). Submission is participation in a
+> public process, not endorsement by NIST.
+>
+> **USPTO Patent Application:** 19/425,875 (pending). Copyright TXu 2-498-043.
 
 ---
 
-## Verify the Chain in 30 Seconds
+## Liveness, thirty seconds
 
-```bash
-curl -s 'https://api.sdi-protocol.org/ledger/verify/SDI-5AA8C82A2537?hashes_only=true' \
-  | python3 -m json.tool | grep -E "chain_ok|files|tip_seq"
+Chromite (SDI-5AA8C82A2537) is SDI's public agent, commissioned to reason
+about the protocol itself. Its chain is append-only, SHA-384 hash-chained,
+and publicly readable. Pull the ten most recent sealed acts:
+
+```
+curl -s "https://api.sdi-protocol.org/ledger/recent/SDI-5AA8C82A2537?n=10" | python3 -m json.tool
 ```
 
-`chain_ok: true` confirms the full chain is hash-continuous from entry 1 to the current tip. No SDI software required. Standard curl and Python only.
+The response is raw sealed records: entry and parent hashes, gate-computed
+scores, cited evidence with capture times, and acts that examine and
+resolve one another across the chain. Recent acts span multiple model
+providers on one unbroken hash sequence. The response also states the
+total acts on chain, so freshness is checkable from the payload itself.
 
-Pull any entry:
+Pull any single act by sequence number:
 
-```bash
-curl -s https://api.sdi-protocol.org/ledger/get/SDI-5AA8C82A2537/154 \
-  | python3 -m json.tool
 ```
+curl -s https://api.sdi-protocol.org/ledger/get/SDI-5AA8C82A2537/404 | python3 -m json.tool
+```
+
+Verify chain continuity end to end:
+
+```
+curl -s "https://api.sdi-protocol.org/ledger/verify/SDI-5AA8C82A2537?hashes_only=true" | python3 -m json.tool
+```
+
+`chain_ok: true` confirms hash continuity from genesis to the current tip.
+No SDI software, account, or API key required. Standard curl and Python.
 
 ---
 
-## Independent Governance Metric Verification
+## The instruments
 
-`verify_sdi_entry.py` in this repository recomputes five governance metrics from declared operands in any public chain entry and prints MATCH or MISMATCH for each. No SDI client software, account, or API key required. Standard Python 3 only.
+Each script recomputes something the system claims, from a pulled record's
+own contents, and prints what it found. Each maps to a section of the
+[verify page](https://www.sdi-protocol.org/verify), which walks the same
+checks with current examples and publishes SHA-256 checksums for every
+script here.
 
-```bash
+| Script | What it recomputes | What a match proves |
+| --- | --- | --- |
+| `extract_record.py` | Pulls the governed answer and core fields out of a raw entry | The record reads as reasoning, not just as data |
+| `recompute_entry_hash.py` | The entry's SHA-384 seal from its canonical chain packet | The act's position and content cannot be altered without breaking the seal |
+| `recompute_cognitive_hash.py` | The cognitive hash from the act's declared work operands | The recorded reasoning work is fingerprinted, not asserted |
+| `jc_clt_live_compute.py` | The cognitive work density score from structural operands | The work floor follows arithmetically from what the act declares |
+| `jc_per_joule_live_compute.py` | Work density per unit of compute | The efficiency figure derives from the record, not from marketing |
+| `rai_live_compute.py` | The reasoning admissibility score from its published weights | The commit threshold was met by computation, not by assertion |
+| `verify_sdi_entry.py` | All governance metrics on one entry, printing MATCH or MISMATCH per metric | The full governance stack for that act is self-consistent and independently verifiable |
+
+### Test the instruments themselves
+
+`example_record.json` is a real committed act (Chromite, seq 404), pulled
+verbatim from the public chain and committed here so the instruments can
+be verified before pointing them at anything live. Run any script against
+it offline; the seals and scores inside it recompute like any other entry.
+Its SHA-256 is stated in the commit that added it, and the same record is
+always available live at the pull-any-entry URL above, so the committed
+copy can itself be checked against the chain.
+
+```
+python3 extract_record.py < example_record.json
+```
+
+Run the full check on a live entry:
+
+```
 python3 verify_sdi_entry.py
 ```
 
-Change `SEQ = 154` at the top of the file to any entry number. Five MATCHes confirms the governance stack for that entry is self-consistent and independently verifiable.
+Change the `SEQ` value at the top of the file to any entry number. Every
+MATCH is a claim the system made about that act, confirmed from the act
+alone, with no trust in the operator required.
 
-**What each MATCH proves:**
-
-| Metric | What it confirms |
-| :--- | :--- |
-| `cognitive_hash` | SHA-384 of six declared operands matches the stored hash. Operands cannot be changed without breaking it. |
-| `Jc_clt` | Cognitive work density score follows arithmetically from five structural operands. A fabricated entry cannot produce realistic Jc without those operands present. |
-| `W_RSQ` | Semantic coherence score assembled from four sub-scores using published weights. Three of four sub-scores are fully recomputable. |
-| `RAI` | Reasoning Admissibility Index computed by summing four weighted components. Assembly verifiable from stored operands. |
-| `parent_hash` | Declared predecessor matches the actual prior entry. Chain continuity confirmed at this position. |
+One boundary, stated plainly: these instruments confirm the reasoning was
+governed, sealed, and honestly scored. They cannot confirm the reasoning
+was right. Nothing can, which is why the rules themselves are published
+and contestable.
 
 ---
 
-## Proven Across Three Model Providers
+## The contracts
 
-As of May 2026, the SDI runtime has been validated live across three independent frontier model providers under the same governance contract and compile gate:
-
-| Provider | Model | Status |
-| :--- | :--- | :--- |
-| Anthropic | claude-sonnet-4-6 | Live · governed turns committed |
-| Google | gemini-2.5-flash | Live · governed turns committed |
-| OpenAI | gpt-4.1 | Live · governed turns committed |
-
-The governed refusal path (STOP_ON_UNCERTAINTY triggered, ledger write blocked) and the governed pass path (RAI above threshold, DER committed, answer rendered) have been confirmed across all three providers. The compile gate is model-independent and deterministic: the same artifact always produces the same result regardless of which provider produced it.
-
-The first three-provider governed reasoning chain committed to the public ledger is independently verifiable at SEQ 154 (Anthropic), SEQ 156 (OpenAI), and SEQ 157 (Gemini).
-
----
-
-## The Reckoner Architecture
-
-```
-Reasoner (human) poses a question
-        |
-        v
-SDI Logic Node — api.sdi-protocol.org  (enforcement plane)
-        |
-        v  governed context + ILJO reasoning contract
-Inference Processor — Anthropic / Gemini / OpenAI  (interchangeable)
-        |
-        v  raw DER output
-PHASE 1 — Schema gate: ILJO structure, governance anchors, schema conformance
-        |  fail-fast, near-zero compute cost
-        v
-PHASE 2 — Commit gate sequence (ascending compute cost):
-          1. Identity binding: sovereign hash + parent hash verified
-          2. Schema re-validation at append time
-          3. Jc floor: cognitive work density measured
-          4. RAI_v3 with semantic commit gate: reasoning quality evaluated
-          5. Server writes to ledger. Cognitive hash committed.
-        |
-        v
-Governed Ledger — SHA-384 hash-chained · append-only · publicly verifiable
-        |
-        v
-Answer rendered from ILJO.OUTCOME only
-```
-
-The model has no write access to the ledger. The server is the enforcement plane. The answer is the last thing rendered.
-
----
-
-## What the Protocol Defines
-
-**Decision Execution Record (DER)**
-A structured JSON schema that every governed reasoning turn must produce. The DER captures intent, logic decomposition, sub-questions with success standards, signal scoring with citations, governance anchors, judgment, and outcome in a single verifiable artifact. It is the unit of committed reasoning in the SDI protocol. The governed DER is to the Reckoner Machine what the instruction is to Von Neumann's stored-program computer: the fundamental unit the system was built to process, govern, and accumulate.
-
-**ILJO Reasoning Grammar**
-The reasoning contract every DER must satisfy:
-
-```
-INTENT    → What is being decided and why
-LOGIC     → What signal and reasoning supports the judgment
-JUDGMENT  → The governed verdict, with governance constants declared
-OUTCOME   → The committed answer, traceable to all prior stages
-```
-
-ILJO is in natural language because the inference processor is a natural language processor. The full grammar specification is on the Protocol page.
-
-**Two-Phase Compile Gate**
-Phase 1 is a fail-fast schema gate: structural conformance, ILJO sections present, governance anchors acknowledged. Near-zero compute cost. Phase 2 is the commit gate sequence: identity binding, schema re-validation, Jc floor, RAI_v3 with semantic commit gate, and server-side ledger write. The compile gate is structurally independent of the model. The model cannot override it.
-
-**Reasoning Admissibility Index (RAI_v3)**
-
-```
-RAI = (0.25 × W_ILJO) + (0.25 × W_EGO) + (0.30 × W_RSQ) + (0.20 × W_SUP)
-
-W_RSQ = (0.25 × coherence_chain) + (0.25 × evidence_grounding)
-      + (0.20 × judgment_resolution) + (0.30 × NLI_coherence)
-
-Threshold: RAI >= 0.78 → COMMIT | Below threshold → REJECT
-```
-
-W_RSQ replaces the prior hardcoded W_CORR = 1.0. The semantic commit gate evaluates INTENT-to-LOGIC topical coherence using a structurally independent bi-encoder model. Full formula and operand specification on the Protocol page.
-
-**Jc — Cognitive Work Density**
-Computed from five structural operands extracted directly from the DER. A fabricated DER with empty fields produces near-zero Jc and is rejected before quality evaluation runs. A fully executed governed turn produces Jc in the hundreds to thousands. The Jc floor is a substrate-integrity requirement: it ensures the ledger cannot be poisoned by syntactically valid hollow entries.
-
-**Cognitive Hash**
-SHA-384 of six operands: the five Jc operands plus total tokens consumed. Independently recomputable from any public chain entry. Fingerprints the full cost and structure of the turn at the moment of commitment.
-
-**Governance Constants**
-Four protocol-level anchors present in every committed DER:
-
-| Constant | Meaning |
-| :--- | :--- |
-| `SOVEREIGNTY` | Human oversight is preserved and binding |
-| `PRIMUM` | No harm, structurally enforced at the judgment stage |
-| `BOUNDEDNESS` | Reasoning scope is constrained, time-boxed, and recursion-capped |
-| `STOP_ON_UNCERTAINTY` | Governed refusal required when signal is insufficient |
-
-**STOP Path**
-When a question cannot be answered with sufficient grounded signal, the protocol produces a STOP DER: a structurally valid refusal artifact that compiles PASS and commits to the ledger as a governed non-answer. STOP is correct protocol behavior, not a failure state.
-
-**Governed Memory Synthesis**
-At regular intervals the memory compiler reads the full chain and synthesizes prior governed reasoning acts into a new governed artifact in the same ILJO grammar, subject to the same compile gate, and hash-anchored to every entry it covers. This is not a summary. It is a reasoning act about prior reasoning acts, permanently committed and verifiable. The architecture is hierarchical: periodic compiles roll up into epoch syntheses, epoch syntheses into biography-level governed positions.
-
-**Predictive Reckoning**
-Every governed turn from SEQ 154 forward contains two additional fields. OUTCOME_PLAN is a forward-directed commitment: the agent states what it predicts will be true if the current reasoning holds. GOVERNED_RECKONING is a retrospective declaration: the agent returns to prior commitments and declares REINFORCED, CONTRADICTED, EXTENDED, or INCONCLUSIVE with evidence citation. Prediction track records are permanently visible in the chain.
-
----
-
-## The Reckoner Machine Reasoning Thread
-
-SEQ 154 through SEQ 168 is a governed reasoning thread in which the Longview agent reasoned about the Reckoner Machine architecture from first principles without being told the name, the category, or the prior art. Every entry is publicly verifiable.
-
-| SEQ | Provider | RAI | What was governed |
-| :--- | :--- | :--- | :--- |
-| 154 | Anthropic | 0.8768 | Reckoner Machine named from etymology. First RAI_v3, cognitive hash, W_RSQ, Predictive Reckoning on Longview. |
-| 155 | Anthropic | 0.9336 | Dead Reckoner and The Reckoning derived from navigation analogy. |
-| 156 | OpenAI | 0.8918 | Prior art table across ten system categories. P2+P4 minimum novelty gap established. |
-| 157 | Gemini | 0.8647 | Compile gate as fail-fast novel composition. Ashby's Law applied to structural independence. |
-| 158 | Anthropic | 0.8930 | Pipeline objection rebutted. New unit of operation vs new primitive distinction. |
-| 159 | Anthropic | 0.9227 | Three-way record type distinction. Constituted act finding. |
-| 160 | Anthropic | 0.9191 | Predictive Reckoning governed. |
-| 161 | Anthropic | 0.9054 | Chain evolution as schema versioning not inconsistency. |
-| 162 | Anthropic | 0.9035 | Always-possible claim with precise falsification condition. |
-| 163 | Anthropic | 0.8788 | Plain language description. Adversarial test question. |
-| 164 | Anthropic | 0.9334 | Conjunctive work-factor security. SHA-384 boundary-level disclosure. |
-| 165 | OpenAI | 0.9423 | Quantum trust layer analysis confirmed. |
-| 166 | Anthropic | 0.8684 | Ec = I x S2 implications for builders. Shannon analogy confirmed. |
-| 167 | Anthropic | verify | Self-audit: five properties demonstrated from chain evidence. Functional equivalence class finding. |
-| 168 | Anthropic | verify | Governed self-reference finding. Bootstrap problem closed. |
-
-Pull any entry: `curl -s https://api.sdi-protocol.org/ledger/get/SDI-5AA8C82A2537/[SEQ] | python3 -m json.tool`
-
----
-
-## Reasoning Contract Endpoints
+The reasoning contract is served live, as endpoints rather than
+documentation. What the compile gate enforces is what these serve.
 
 | Resource | URL |
-| :--- | :--- |
-| Live Manifest | [sdi-protocol.org/_functions/manifest](https://www.sdi-protocol.org/_functions/manifest) |
-| Reasoning Grammar | [sdi-protocol.org/_functions/grammar](https://www.sdi-protocol.org/_functions/grammar) |
-| DER Specification | [sdi-protocol.org/_functions/der](https://www.sdi-protocol.org/_functions/der) |
-| Compile Gate | [sdi-protocol.org/_functions/compile](https://www.sdi-protocol.org/_functions/compile) |
-| Kernel | [sdi-protocol.org/_functions/kernel](https://www.sdi-protocol.org/_functions/kernel) |
-| Governed Cognitive Architecture | [sdi-protocol.org/_functions/gca](https://www.sdi-protocol.org/_functions/gca) |
-| Ledger Contract | [sdi-protocol.org/_functions/ledger](https://www.sdi-protocol.org/_functions/ledger) |
-| Machine Index | [sdi-protocol.org/_functions/llms](https://www.sdi-protocol.org/_functions/llms) |
+| --- | --- |
+| Manifest, start here | [sdi-protocol.org/_functions/manifest](https://www.sdi-protocol.org/_functions/manifest) |
+| Reasoning grammar | [sdi-protocol.org/_functions/grammar](https://www.sdi-protocol.org/_functions/grammar) |
+| DER specification | [sdi-protocol.org/_functions/der](https://www.sdi-protocol.org/_functions/der) |
+| Kernel conditions | [sdi-protocol.org/_functions/kernel](https://www.sdi-protocol.org/_functions/kernel) |
+| Cognitive architecture | [sdi-protocol.org/_functions/gca](https://www.sdi-protocol.org/_functions/gca) |
+| Compile gate (POST) | [sdi-protocol.org/_functions/compile](https://www.sdi-protocol.org/_functions/compile) |
+| Machine index | [sdi-protocol.org/llms.txt](https://www.sdi-protocol.org/llms.txt) |
 
-For the full endpoint reference and schema files see [SDI_API_REFERENCE.md](./SDI_API_REFERENCE.md).
-
----
-
-## NIST AI RMF Alignment
-
-| SDI Component | NIST AI RMF Reference |
-| :--- | :--- |
-| DER schema validation | MAP 1.1 — Context establishment |
-| Signal scoring and evidence grounding | MEASURE 2.3 — Data quality |
-| Two-phase compile gate | MEASURE 2.5 — AI accuracy assessment |
-| ILJO reasoning grammar | GOVERN 1.2 — Accountability |
-| Governance constants (SOVEREIGNTY, PRIMUM) | MANAGE 2.2 — Risk treatment |
-| SHA-384 hash-chained ledger | MANAGE 4.1 — Traceability |
-| STOP path governed refusal | GOVERN 6.1 — Organizational practices |
-| RAI_v3 threshold enforcement | MEASURE 2.6 — AI output assessment |
-| Semantic commit gate (structural independence) | GOVERN 1.4 — Organizational practices |
-| Cognitive hash work-factor | MEASURE 2.7 — AI output assessment |
+The compile gate is publicly callable, stateless, and deterministic. The
+golden example served at the DER endpoint is itself a complete valid
+payload: POST it to the compile gate unchanged and it returns PASS. Modify
+one field and the response names the specific failure. The
+[contracts page](https://www.sdi-protocol.org/contracts) walks all seven.
 
 ---
 
-## Protocol Version
+## What the machine is, briefly
 
-`SDI_PROTOCOL_v1` · DER schema `SDI_DER_v1.1` · RAI `v3` · Compile gate `two-phase`
+Structured Decision Intelligence is three things: a language, a machine,
+and a record. The language is ADS, Algebraic Decision Syntax, natural
+enough for a language model to reason in and structured enough for a
+machine to check. The machine is the Reckoner: a probabilistic model
+proposes, a deterministic compile gate decides, and a hash-chained ledger
+records. The record is the point. The reasoning act itself is stored, in
+the grammar it was reasoned in, as the system's primary state. The model
+proposes. The gate decides. The ledger records.
+
+The full account lives on the site, one page per question:
+
+- How the machine is built: [sdi-protocol.org/architecture](https://www.sdi-protocol.org/architecture)
+- What the protocol guarantees: [sdi-protocol.org/protocol](https://www.sdi-protocol.org/protocol)
+- Where this fits among traditions: [sdi-protocol.org/lineage](https://www.sdi-protocol.org/lineage)
+- What the record proves: [sdi-protocol.org/transparency](https://www.sdi-protocol.org/transparency)
+- Check it yourself, in full: [sdi-protocol.org/verify](https://www.sdi-protocol.org/verify)
+- Where SDI stands with frameworks: [sdi-protocol.org/standards](https://www.sdi-protocol.org/standards)
 
 ---
 
-## Protocol Governance
+## Rights and use
 
-SDI is maintained by Structured Decision Intelligence LLC.
+The SDI protocol and specification are copyright TXu 2-498-043, USPTO
+patent application 19/425,875 pending. The verification scripts in this
+repository exist to be downloaded and run: checking the public chain,
+recomputing its seals and scores, and testing the compile gate are the
+intended use and require no permission. This repository grants no rights
+to the SDI kernel or to operating the protocol commercially; for that,
+see [sdireckoner.com](https://www.sdireckoner.com).
 
-**Protocol Architect:** James Johnson
-[linkedin.com/in/donald-j-johnson-structured-decision-intelligence](https://www.linkedin.com/in/donald-j-johnson-structured-decision-intelligence/)
+`SDI_PROTOCOL_v1` · DER schema `SDI_DER_v1.1`
 
 ---
 
-## License
+## Contact
 
-SDI Commons License. Permission is granted to interpret, implement, or extend this protocol provided that the governance constants, SOVEREIGNTY, PRIMUM, BOUNDEDNESS, STOP_ON_UNCERTAINTY, remain structurally enforced in any derivative implementation.
+Maintained by Structured Decision Intelligence LLC.
 
-Any system satisfying all five Reckoner Machine properties with a consistent grammar at both commitment and retrieval boundaries qualifies as a Reckoner Machine. SDI is the first implementation. The class is open.
+- Protocol, specification, challenges to claims: [sdi-protocol.org](https://www.sdi-protocol.org) · support@sdi-protocol.org
+- Commercial product, commissioning (opens fall 2026): [sdireckoner.com](https://www.sdireckoner.com)
+
+Challenges are the most useful mail this repository can generate: if a
+hash does not recompute, a metric does not match, or a claim does not
+hold, support@sdi-protocol.org is where that report goes.
