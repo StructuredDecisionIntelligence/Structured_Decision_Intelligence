@@ -28,73 +28,108 @@ metrics = audit['metrics']
 
 all_match = True
 
-# Era detection: presence of RS in cognitive_hash_operands is the structural
-# marker for both the Jc_clt log-AL formula and the seven-operand cognitive_hash
-# canonicalization, confirmed against app_v1.py (calc_jc_clt docstring,
-# _build_cognitive_hash_operands, compute_cognitive_hash). Both changes ship
-# in the same shared functions, so one marker covers both. Not a hardcoded
-# seq threshold: this reads the record's own structure.
+# RS presence in cognitive_hash_operands governs the cognitive_hash operand
+# set (six keys vs seven), confirmed against app_v1.py's
+# _build_cognitive_hash_operands and compute_cognitive_hash. Confirmed
+# correct for seq 1, 50, 150, 154, 295-302, 300, 404, 408.
 ch_ops_raw = metrics.get('cognitive_hash_operands', {})
-CURRENT_ERA = 'RS' in ch_ops_raw
-era_label = 'CURRENT (RS present, log-AL Jc_clt, seven-operand hash)' if CURRENT_ERA else 'LEGACY (no RS, linear-AL Jc_clt, six-operand hash)'
-print(f'ERA DETECTED: {era_label}\n')
+RS_PRESENT = 'RS' in ch_ops_raw
+print(f'cognitive_hash operand set: {"seven-operand, RS present" if RS_PRESENT else "six-operand, no RS"}\n')
 
 # 1. Jc_clt
+# RS presence does NOT track the Jc_clt formula: live seq 295-302 (Ender
+# SEQ 210+ per calc_jc_clt's own docstring) all use the log-AL formula
+# with no RS present at all, confirmed against eight real entries. The
+# two transitions (log-AL Jc_clt, RS in cognitive_hash) shipped at
+# different times and are unrelated. No field in the record declares
+# which Jc_clt formula was used, so both are computed and the one
+# matching the stored value is reported, rather than guessing a marker
+# that does not exist.
 ops = metrics.get('Jc_clt_operands', {})
-SQ = ops.get('SQ', 0)
-SC = ops.get('SC', 0)
-CE = ops.get('CE', 0)
-AL = ops.get('AL', 0)
-U  = ops.get('U', 0)
-if CURRENT_ERA:
-    computed_jc = ((SQ * max(SC, 1)) + CE) * (math.log(AL + 1) * U)
-    formula_desc = 'formula:  ((SQ x max(SC,1)) + CE) x (ln(AL+1) x U)'
-    formula_line = f'                   (({SQ} x {max(SC,1)}) + {CE}) x (ln({AL}+1) x {U})'
+entry_type = entry.get('type', 'UNKNOWN')
+if 'Jc_clt' not in metrics:
+    print(f'SKIP     Jc_clt  (not present on this entry, type={entry_type})')
+    print()
 else:
-    computed_jc = ((SQ * max(SC, 1)) + CE) * (AL * U)
-    formula_desc = 'formula:  ((SQ x max(SC,1)) + CE) x (AL x U)'
-    formula_line = f'                   (({SQ} x {max(SC,1)}) + {CE}) x ({AL} x {U})'
-stored_jc = float(metrics.get('Jc_clt', 0))
-ok = abs(computed_jc - stored_jc) < 0.01
-if not ok: all_match = False
-status = 'MATCH   ' if ok else 'MISMATCH'
-print(f'{status}  Jc_clt  (cognitive work density)')
-print(f'         operands: SQ={SQ}  SC={SC}  CE={CE}  AL={AL}  U={U}')
-print(f'         {formula_desc}')
-print(formula_line)
-print(f'                   = {round(computed_jc,2)}   stored: {stored_jc}')
-print()
+    SQ = ops.get('SQ', 0)
+    SC = ops.get('SC', 0)
+    CE = ops.get('CE', 0)
+    AL = ops.get('AL', 0)
+    U  = ops.get('U', 0)
+    stored_jc = float(metrics.get('Jc_clt', 0))
+    jc_linear = ((SQ * max(SC, 1)) + CE) * (AL * U)
+    jc_log    = ((SQ * max(SC, 1)) + CE) * (math.log(AL + 1) * U) if AL > 0 or SQ > 0 or CE > 0 else 0.0
+    lin_match = abs(round(jc_linear, 2) - stored_jc) < 0.01
+    log_match = abs(round(jc_log, 2) - stored_jc) < 0.01
+    if log_match:
+        computed_jc, jc_formula_used = jc_log, 'log-AL'
+        formula_desc = 'formula:  ((SQ x max(SC,1)) + CE) x (ln(AL+1) x U)'
+        formula_line = f'                   (({SQ} x {max(SC,1)}) + {CE}) x (ln({AL}+1) x {U})'
+    elif lin_match:
+        computed_jc, jc_formula_used = jc_linear, 'linear-AL'
+        formula_desc = 'formula:  ((SQ x max(SC,1)) + CE) x (AL x U)'
+        formula_line = f'                   (({SQ} x {max(SC,1)}) + {CE}) x ({AL} x {U})'
+    else:
+        computed_jc, jc_formula_used = jc_log, 'log-AL (neither matched, showing log)'
+        formula_desc = 'formula:  ((SQ x max(SC,1)) + CE) x (ln(AL+1) x U)'
+        formula_line = f'                   (({SQ} x {max(SC,1)}) + {CE}) x (ln({AL}+1) x {U})'
+    ok = lin_match or log_match
+    if not ok: all_match = False
+    status = 'MATCH   ' if ok else 'MISMATCH'
+    print(f'{status}  Jc_clt  (cognitive work density)  [{jc_formula_used}]')
+    print(f'         operands: SQ={SQ}  SC={SC}  CE={CE}  AL={AL}  U={U}')
+    print(f'         {formula_desc}')
+    print(formula_line)
+    print(f'                   = {round(computed_jc,2)}   stored: {stored_jc}')
+    print()
+
+CURRENT_ERA = RS_PRESENT
 
 # 2. cognitive_hash
-ch_ops = metrics.get('cognitive_hash_operands', {})
-h_AL = ch_ops.get('AL', AL)
-h_CE = ch_ops.get('CE', CE)
-h_SC = ch_ops.get('SC', SC)
-h_SQ = ch_ops.get('SQ', SQ)
-h_T  = ch_ops.get('T', 0)
-h_U  = ch_ops.get('U', U)
-
-if CURRENT_ERA:
-    h_RS = ch_ops.get('RS', '')
-    canonical_dict = {"AL":h_AL,"CE":h_CE,"RS":h_RS,"SC":h_SC,"SQ":h_SQ,"T":h_T,"U":h_U}
+# Not present on every entry type: confirmed live on seq 1 (MINT_PROOF) and
+# seq 150 (MEMORY_COMPILE), neither carries cognitive_hash or
+# cognitive_hash_operands in AUDIT.metrics at all, by direct read of both
+# full records. This was never a token-extraction bug: the field is
+# genuinely absent, not misplaced. Gated on presence, same pattern as the
+# existing W_RSQ skip below.
+if 'cognitive_hash' not in metrics:
+    print(f'SKIP     cognitive_hash  (not present on this entry, type={entry_type})')
+    print()
 else:
-    canonical_dict = {"AL":h_AL,"CE":h_CE,"SC":h_SC,"SQ":h_SQ,"T":h_T,"U":h_U}
+    SQ = ops.get('SQ', 0)
+    SC = ops.get('SC', 0)
+    CE = ops.get('CE', 0)
+    AL = ops.get('AL', 0)
+    U  = ops.get('U', 0)
+    ch_ops = metrics.get('cognitive_hash_operands', {})
+    h_AL = ch_ops.get('AL', AL)
+    h_CE = ch_ops.get('CE', CE)
+    h_SC = ch_ops.get('SC', SC)
+    h_SQ = ch_ops.get('SQ', SQ)
+    h_T  = ch_ops.get('T', 0)
+    h_U  = ch_ops.get('U', U)
 
-if (h_AL != AL or h_CE != CE or h_SC != SC or h_SQ != SQ or h_U != U):
-    print('WARNING  cognitive_hash operands differ from Jc_clt operands, using hash operands')
+    if CURRENT_ERA:
+        h_RS = ch_ops.get('RS', '')
+        canonical_dict = {"AL":h_AL,"CE":h_CE,"RS":h_RS,"SC":h_SC,"SQ":h_SQ,"T":h_T,"U":h_U}
+    else:
+        canonical_dict = {"AL":h_AL,"CE":h_CE,"SC":h_SC,"SQ":h_SQ,"T":h_T,"U":h_U}
 
-canonical = json.dumps(canonical_dict, sort_keys=True, separators=(',',':'), ensure_ascii=False)
-computed_hash = sha384(canonical)
-stored_hash   = metrics.get('cognitive_hash', '')
-ok_hash = computed_hash.upper() == stored_hash.upper()
-if not ok_hash: all_match = False
-status_h = 'MATCH   ' if ok_hash else 'MISMATCH'
-print(f'{status_h}  cognitive_hash  (reasoning cost fingerprint)')
-print(f'         operands: {canonical_dict}')
-print(f'         canonical: {canonical}')
-print(f'         SHA-384:  {computed_hash[:22]}...')
-print(f'         stored:   {stored_hash[:22]}...')
-print()
+    if (h_AL != AL or h_CE != CE or h_SC != SC or h_SQ != SQ or h_U != U):
+        print('WARNING  cognitive_hash operands differ from Jc_clt operands, using hash operands')
+
+    canonical = json.dumps(canonical_dict, sort_keys=True, separators=(',',':'), ensure_ascii=False)
+    computed_hash = sha384(canonical)
+    stored_hash   = metrics.get('cognitive_hash', '')
+    ok_hash = computed_hash.upper() == stored_hash.upper()
+    if not ok_hash: all_match = False
+    status_h = 'MATCH   ' if ok_hash else 'MISMATCH'
+    print(f'{status_h}  cognitive_hash  (reasoning cost fingerprint)')
+    print(f'         operands: {canonical_dict}')
+    print(f'         canonical: {canonical}')
+    print(f'         SHA-384:  {computed_hash[:22]}...')
+    print(f'         stored:   {stored_hash[:22]}...')
+    print()
 
 # 3. W_RSQ
 wrsq_ops = metrics.get('W_RSQ_operands', {})
