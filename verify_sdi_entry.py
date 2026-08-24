@@ -1,11 +1,33 @@
-import urllib.request, json, hashlib, math, sys
+import urllib.request, json, hashlib, math, sys, time
 
 # Change SEQ below or pass as argument: python3 verify_sdi_entry.py 160
 SEQ = int(sys.argv[1]) if len(sys.argv) > 1 else 404
 
+# Confirmed cause of the seq 302+ parent_hash failure under sequential
+# sweeps: a single isolated fetch of seq 301 succeeds cleanly (200, full
+# body, real entry_hash), same URL, same code path as every other seq.
+# The failure only appears after sustained request volume in a tight
+# loop, consistent with throttling upstream of this application, not a
+# per-seq data problem. Fix: retry with backoff on transient failure,
+# plus a short pacing delay between requests to stay under whatever
+# threshold triggers it.
+FETCH_RETRIES = 3
+FETCH_BACKOFF_SECONDS = 1.5
+REQUEST_PACING_SECONDS = 0.3
+
 def fetch(seq):
     url = f'https://api.sdi-protocol.org/ledger/get/SDI-5AA8C82A2537/{seq}'
-    return json.loads(urllib.request.urlopen(url).read())
+    last_err = None
+    for attempt in range(FETCH_RETRIES):
+        if attempt > 0:
+            time.sleep(FETCH_BACKOFF_SECONDS * attempt)
+        try:
+            result = json.loads(urllib.request.urlopen(url).read())
+            time.sleep(REQUEST_PACING_SECONDS)
+            return result
+        except Exception as e:
+            last_err = e
+    raise last_err
 
 def fetch_entry_hash(seq):
     if seq < 1:
@@ -13,7 +35,8 @@ def fetch_entry_hash(seq):
     try:
         d = fetch(seq)
         return d['event']['ENTRY'].get('entry_hash')
-    except:
+    except Exception as e:
+        print(f'WARNING  predecessor fetch for seq {seq} failed after {FETCH_RETRIES} attempts: {e}')
         return None
 
 def sha384(s):
