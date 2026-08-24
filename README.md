@@ -82,7 +82,7 @@ script here.
 
 ### Test the instruments themselves
 
-`example_record.json` is a real committed act (Chromite, seq 404), pulled
+`committed_act_seq404.json` is a real committed act (Chromite, seq 404), pulled
 verbatim from the public chain and committed here so the instruments can
 be verified before pointing them at anything live. Run any script against
 it offline; the seals and scores inside it recompute like any other entry.
@@ -91,7 +91,7 @@ always available live at the pull-any-entry URL above, so the committed
 copy can itself be checked against the chain.
 
 ```
-python3 extract_record.py < example_record.json
+python3 extract_record.py < committed_act_seq404.json
 ```
 
 Run the full check on a live entry:
